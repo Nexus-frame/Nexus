@@ -16,27 +16,31 @@ var upgrade = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // 根据需要调整跨域策略
+		return true
 	},
 }
 
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+type WsHandler func(e *Engine, w http.ResponseWriter, r *http.Request)
+
+func serveWs(e *Engine, w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrade.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 	conn := &Connection{ws: ws, send: make(chan []byte, 256)}
-	hub.register <- conn
-
+	e.register <- conn // 注册连接
 	go conn.writePump()
-	go conn.readPump(hub)
+	go conn.readPump(e)
 }
 
-func (c *Connection) readPump(hub *Hub) {
+func (c *Connection) readPump(hub *Engine) {
 	defer func() {
-		hub.unregister <- c
-		c.ws.Close()
+		hub.unregister <- c // 注销连接
+		err := c.ws.Close()
+		if err != nil {
+			log.Println("Close error:", err)
+		}
 	}()
 	for {
 		_, message, err := c.ws.ReadMessage()

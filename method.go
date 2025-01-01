@@ -11,20 +11,20 @@ const (
 	OPTIONS method = "OPTIONS"
 )
 
-func Check(method string) bool {
+func allowMethod(method method) bool {
 	switch method {
-	case "GET":
+	case GET:
 		return true
-	case "POST":
+	case POST:
 		return true
-	case "PUT":
+	case PUT:
 		return true
-	case "DELETE":
+	case DELETE:
 		return true
-	case "HEAD":
-		return true
-	case "OPTIONS":
-		return true
+	case HEAD:
+		return false // 不放行这个请求 因为不需要
+	case OPTIONS:
+		return false //不放行这个请求 因为不需要
 	default:
 		return false
 	}

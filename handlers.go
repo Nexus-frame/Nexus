@@ -5,48 +5,62 @@ import (
 	"log"
 )
 
-type HandlerFunc func(payload payload, conn *Connection)
+type HandlerFunc func(c *Context)
 
-var handlers = map[method]map[path]HandlerFunc{}
+type HandlerFuncList []HandlerFunc
+
+var DefaultHandlerFuncList = HandlerFuncList{DefaultHandler404Handler}
+
+var handlers = map[method]map[path]HandlerFuncList{}
 
 func handleMessage(message []byte, conn *Connection) {
-	var req ReqMessage
-	if err := json.Unmarshal(message, &req); err != nil {
+	var c Context
+	var handler HandlerFuncList
+	if err := json.Unmarshal(message, &c.Request); err != nil {
 		log.Println("Invalid message format:", err)
+		handler = DefaultHandlerFuncList
 		return
 	}
 
-	handler, exists := handlers[req.Method][req.Path]
+	handler, exists := handlers[c.Request.Method][c.Request.Path]
 	if !exists {
 		// 未找到对应的处理器 调用默认处理器
-		handler = DefaultHandler404Handler
+		handler = DefaultHandlerFuncList
 	}
 	// 调用对应的处理器
-	handler(req.Payload, conn)
+	for _, handlerFunc := range handler {
+		handlerFunc(&c)
+	}
+	respBytes, err := json.Marshal(c.Response)
+	if err != nil {
+		log.Println("Error marshalling createOrder response:", err)
+		return
+	}
+	conn.send <- respBytes
 }
 
 // DefaultHandler404Handler 默认404处理器
-func DefaultHandler404Handler(payload payload, conn *Connection) {
-	response := map[string]interface{}{
-		"error": "404 Not Found",
+func DefaultHandler404Handler(c *Context) {
+	c.Response = &ResMessage{
+		Header: header{
+			"Content-Type": "application/json",
+		},
+		ID: c.Request.ID,
+		Body: N{
+			"error": "404 Not Found",
+		},
 	}
-
-	respBytes, err := json.Marshal(response)
-	if err != nil {
-		log.Println("Error marshalling createOrder response:", err)
-		return
-	}
-	conn.send <- respBytes
 }
 
-func DefaultHandler405Handler(payload json.RawMessage, conn *Connection) {
-	response := map[string]interface{}{
-		"error": "405 method not allowed",
+// DefaultHandler500Handler 默认404处理器
+func DefaultHandler500Handler(c *Context) {
+	c.Response = &ResMessage{
+		Header: header{
+			"Content-Type": "application/json",
+		},
+		ID: c.Request.ID,
+		Body: N{
+			"error": "500 Internal Server Error",
+		},
 	}
-	respBytes, err := json.Marshal(response)
-	if err != nil {
-		log.Println("Error marshalling createOrder response:", err)
-		return
-	}
-	conn.send <- respBytes
 }
