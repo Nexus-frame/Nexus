@@ -28,7 +28,9 @@ func handleMessage(message []byte, conn *Connection, e *Engine) {
 			c.Request.Params = params
 			// 调用对应的处理器
 			for _, handlerFunc := range h {
-				handlerFunc(c)
+				if !c.exit {
+					handlerFunc(c)
+				}
 			}
 		}
 

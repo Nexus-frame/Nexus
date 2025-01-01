@@ -37,15 +37,6 @@ func New() *Engine {
 	return e
 }
 
-func (c *Context) JSON(Status status, data N) {
-	c.Response = &ResMessage{
-		Header: c.Header,
-		ID:     c.Request.ID,
-		Status: Status,
-		Body:   data,
-	}
-}
-
 func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		serveWs(e, w, r)
