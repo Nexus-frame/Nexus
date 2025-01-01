@@ -1,40 +1,38 @@
 package Nexus
 
 import (
-	"encoding/json"
+	"math"
 	"net/http"
 	"sync"
 )
 
+const abortIndex int8 = math.MaxInt8 >> 1
+
 type Engine struct {
+	RouterGroup
 	Port          int    // 端口 如果端口为0 则表示使用其他的http服务来集成nexus
 	WebSocketPath string // ws 路径
-
-	connections map[*Connection]bool
-	broadcast   chan []byte
-	register    chan *Connection
-	unregister  chan *Connection
-	mu          sync.Mutex
+	connections   map[*Connection]bool
+	broadcast     chan []byte
+	register      chan *Connection
+	unregister    chan *Connection
+	mu            sync.Mutex
+	trees         methodTrees
 }
 
-type Context struct {
-	Request    *ReqMessage
-	Response   *ResMessage
-	Header     header
-	connection *Connection
-	Keys       map[string]any
-	Errors     []*error
-}
+var _ IRouter = (*Engine)(nil)
 
 func New() *Engine {
 	e := &Engine{
 		Port:          0,
 		WebSocketPath: "/",
+		trees:         make(methodTrees, 0, 9),
 		connections:   make(map[*Connection]bool),
 		broadcast:     make(chan []byte),
 		register:      make(chan *Connection),
 		unregister:    make(chan *Connection),
 	}
+	e.RouterGroup.engine = e
 	go e.run() // 启动主循环协程
 	return e
 }
@@ -46,8 +44,6 @@ func (c *Context) JSON(Status status, data N) {
 		Status: Status,
 		Body:   data,
 	}
-	respBytes, _ := json.Marshal(c.Response)
-	c.connection.send <- respBytes
 }
 
 func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request) {
@@ -88,14 +84,16 @@ func (e *Engine) run() {
 	}
 }
 
-func NewContext(conn *Connection) *Context {
-	var defaultReqMessage = DefaultReqMessage
-	var defaultResMessage = DefaultResMessage
-	return &Context{
-		Request:    &defaultReqMessage,
-		Response:   &defaultResMessage,
-		connection: conn,
-		Keys:       make(map[string]any),
-		Errors:     make([]*error, 0),
+func (e *Engine) addRoute(method, path string, handlers HandlerFuncList) {
+	assert1(path[0] == '/', "path must begin with '/'")
+	assert1(method != "", "HTTP method can not be empty")
+	assert1(len(handlers) > 0, "there must be at least one handler")
+
+	root := e.trees.get(method)
+	if root == nil {
+		root = new(node)
+		root.fullPath = "/"
+		e.trees = append(e.trees, methodTree{method: method, root: root})
 	}
+	root.addRoute(path, handlers)
 }

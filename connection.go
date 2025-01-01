@@ -51,11 +51,17 @@ func (c *Connection) readPump(e *Engine) {
 			break
 		}
 		// 处理接收到的消息
-		handleMessage(message, c)
+		handleMessage(message, c, e)
 	}
 }
 
 func (c *Connection) writePump() {
+	defer func() {
+		err := c.ws.Close()
+		if err != nil {
+			log.Println("Close error:", err)
+		}
+	}()
 	for message := range c.send {
 		err := c.ws.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
@@ -63,5 +69,4 @@ func (c *Connection) writePump() {
 			break
 		}
 	}
-	c.ws.Close()
 }
