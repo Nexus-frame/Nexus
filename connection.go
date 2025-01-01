@@ -34,9 +34,9 @@ func serveWs(e *Engine, w http.ResponseWriter, r *http.Request) {
 	go conn.readPump(e)
 }
 
-func (c *Connection) readPump(hub *Engine) {
+func (c *Connection) readPump(e *Engine) {
 	defer func() {
-		hub.unregister <- c // 注销连接
+		e.unregister <- c // 注销连接
 		err := c.ws.Close()
 		if err != nil {
 			log.Println("Close error:", err)

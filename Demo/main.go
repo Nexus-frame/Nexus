@@ -8,6 +8,7 @@ import (
 
 func main() {
 	n := Nexus.New()
+	n.Run()
 	http.HandleFunc("/ws", n.WebSocketService())
 	addr := ":8080"
 	log.Println("Server started on", addr)

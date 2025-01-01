@@ -14,22 +14,23 @@ var DefaultHandlerFuncList = HandlerFuncList{DefaultHandler404Handler}
 var handlers = map[method]map[path]HandlerFuncList{}
 
 func handleMessage(message []byte, conn *Connection) {
-	var c Context
-	var handler HandlerFuncList
+	var c = NewContext(conn)
+	var handler HandlerFuncList = nil
 	if err := json.Unmarshal(message, &c.Request); err != nil {
-		log.Println("Invalid message format:", err)
-		handler = DefaultHandlerFuncList
-		return
-	}
-
-	handler, exists := handlers[c.Request.Method][c.Request.Path]
-	if !exists {
-		// 未找到对应的处理器 调用默认处理器
 		handler = DefaultHandlerFuncList
 	}
-	// 调用对应的处理器
-	for _, handlerFunc := range handler {
-		handlerFunc(&c)
+	if handler == nil {
+		h, exists := handlers[c.Request.Method][c.Request.Path]
+		if !exists {
+			// 未找到对应的处理器 调用默认处理器
+			DefaultHandler404Handler(c)
+		}
+		// 调用对应的处理器
+		for _, handlerFunc := range h {
+			handlerFunc(c)
+		}
+	} else {
+		DefaultHandler500Handler(c)
 	}
 	respBytes, err := json.Marshal(c.Response)
 	if err != nil {

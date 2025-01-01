@@ -27,10 +27,16 @@ type Context struct {
 }
 
 func New() *Engine {
-	return &Engine{
-		Port:          8080,
+	e := &Engine{
+		Port:          0,
 		WebSocketPath: "/",
+		connections:   make(map[*Connection]bool),
+		broadcast:     make(chan []byte),
+		register:      make(chan *Connection),
+		unregister:    make(chan *Connection),
 	}
+	go e.run() // 启动主循环协程
+	return e
 }
 
 func (c *Context) JSON(Status status, data N) {
@@ -49,8 +55,7 @@ func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request)
 		serveWs(e, w, r)
 	}
 }
-func (e *Engine) Run(port int) {
-	go e.run() //启动ws连接管理服务
+func (e *Engine) Run() {
 	//serveWs()
 }
 
@@ -80,5 +85,17 @@ func (e *Engine) run() {
 			}
 			e.mu.Unlock()
 		}
+	}
+}
+
+func NewContext(conn *Connection) *Context {
+	var defaultReqMessage = DefaultReqMessage
+	var defaultResMessage = DefaultResMessage
+	return &Context{
+		Request:    &defaultReqMessage,
+		Response:   &defaultResMessage,
+		connection: conn,
+		Keys:       make(map[string]any),
+		Errors:     make([]*error, 0),
 	}
 }
