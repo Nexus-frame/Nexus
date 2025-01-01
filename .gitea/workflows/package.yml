@@ -1,0 +1,50 @@
+name: Package
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码并获取所有标签
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: Nexus/Nexus  # 替换为您的组织/仓库名
+          token: ${{ vars.TOKEN }}  # 使用 Gitea 的访问令牌
+          fetch-depth: 0            # 获取所有历史记录和标签
+
+      # 2. 获取最新标签、递增、推送新标签、打包和上传
+      - name: Handle Tag, Package, and Upload
+        run: |
+          set -e  # 如果任何命令失败，退出脚本
+
+          # 获取最新标签
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
+          echo "最新标签: $latest_tag"
+
+          # 检查标签格式并递增补丁号
+          if [[ "$latest_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major=${BASH_REMATCH[1]}
+            minor=${BASH_REMATCH[2]}
+            patch=${BASH_REMATCH[3]}
+            new_patch=$((patch + 1))
+            new_tag="v${major}.${minor}.${new_patch}"
+            echo "新标签: $new_tag"
+          else
+            echo "无效的标签格式: $latest_tag"
+            exit 1
+          fi
+
+          # 配置 Git 用户信息
+          git config user.name "${{ vars.USERNAME }}"
+          git config user.email "${{ vars.USERNAME }}@gitoo.icu"
+
+          # 创建并推送新标签
+          git tag $new_tag
+          git push https://${{ vars.USERNAME }}:${{ vars.TOKEN }}@gitoo.icu/Nexus/Nexus.git $new_tag
+          echo "新标签已推送到仓库."
+
