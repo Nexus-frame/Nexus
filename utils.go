@@ -1,6 +1,7 @@
 package Nexus
 
 import (
+	"github.com/google/uuid"
 	"path"
 )
 
@@ -27,4 +28,8 @@ func joinPaths(absolutePath, relativePath string) string {
 		return finalPath + "/"
 	}
 	return finalPath
+}
+
+func UUID() string {
+	return uuid.New().String()
 }

@@ -1,5 +1,7 @@
 package Nexus
 
+import "encoding/json"
+
 type header map[string]any
 type N map[string]any
 type status int
@@ -32,4 +34,15 @@ var DefaultResMessage = ResMessage{
 	Status: 0,
 	Header: nil,
 	Body:   nil,
+}
+
+var DefaultHeader = header{
+	"Content-Type": "application/json",
+	"Accept":       "application/json",
+	"User-Agent":   "Nexus",
+}
+
+func (r *ReqMessage) Bytes() []byte {
+	data, _ := json.Marshal(r)
+	return data
 }
