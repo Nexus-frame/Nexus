@@ -1,6 +1,8 @@
 package Nexus
 
 import (
+	"github.com/gin-gonic/gin"
+	"log"
 	"math"
 	"net/http"
 	"sync"
@@ -10,7 +12,7 @@ const abortIndex int8 = math.MaxInt8 >> 1
 
 type Engine struct {
 	RouterGroup
-	Port          int    // 端口 如果端口为0 则表示使用其他的http服务来集成nexus
+	Addr          string // 端口 如果端口为0 则表示使用其他的http服务来集成nexus
 	WebSocketPath string // ws 路径
 	connections   map[*Connection]bool
 	broadcast     chan []byte
@@ -24,7 +26,7 @@ var _ IRouter = (*Engine)(nil)
 
 func New() *Engine {
 	e := &Engine{
-		Port:          0,
+		Addr:          ":8080",
 		WebSocketPath: "/",
 		trees:         make(methodTrees, 0, 9),
 		connections:   make(map[*Connection]bool),
@@ -42,8 +44,20 @@ func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request)
 		serveWs(e, w, r)
 	}
 }
-func (e *Engine) Run() {
-	//serveWs()
+
+func (e *Engine) GinServe(c *gin.Context) {
+	serveWs(e, c.Writer, c.Request)
+}
+
+func (e *Engine) Run(addr string, path ...string) {
+	wsPath := "/"
+	if len(path) > 0 {
+		wsPath = path[0]
+	}
+	http.HandleFunc(wsPath, e.WebSocketService())
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatal("ListenAndServe:", err)
+	}
 }
 
 func (e *Engine) run() {
