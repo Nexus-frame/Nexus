@@ -52,7 +52,7 @@ func NewClient(scheme, host, path string) (*Client, error) {
 
 // SendRequest 方法用于发送请求并等待响应
 func (c *Client) SendRequest(data ReqMessage) (ResMessage, error) {
-	data.ID = UUID()
+	data.ID = GenerateUniqueString()
 	respChan := make(chan ResMessage)
 	c.mu.Lock()
 	c.pending[data.ID] = respChan

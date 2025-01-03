@@ -1,8 +1,11 @@
 package Nexus
 
 import (
-	"github.com/google/uuid"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"path"
+	"time"
 )
 
 func assert1(guard bool, text string) {
@@ -30,6 +33,12 @@ func joinPaths(absolutePath, relativePath string) string {
 	return finalPath
 }
 
-func UUID() string {
-	return uuid.New().String()
+func GenerateUniqueString() string {
+	date := time.Now().Format("20060102150405")
+	b := make([]byte, 8)
+	_, err := rand.Read(b)
+	if err != nil {
+		return fmt.Sprintf("%s%d", date, time.Now().UnixNano())
+	}
+	return fmt.Sprintf("%s%s", date, hex.EncodeToString(b))
 }
