@@ -46,6 +46,22 @@ func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request)
 }
 
 func (e *Engine) GinServe(c *gin.Context) {
+	//检测是否为ws请求
+	if c.GetHeader("Upgrade") != "websocket" {
+		var h = make(header)
+		h["User-Agent"] = c.GetHeader("User-Agent")
+		h["Accept-Encoding"] = c.GetHeader("Accept-Encoding")
+		h["Accept-Language"] = c.GetHeader("Accept-Language")
+		h["Host"] = c.GetHeader("Host")
+		h["Origin"] = c.GetHeader("Origin")
+		for k, v := range h {
+			if v == "" {
+				delete(h, k)
+			}
+		}
+		c.JSON(200, h)
+		return
+	}
 	serveWs(e, c.Writer, c.Request)
 }
 
