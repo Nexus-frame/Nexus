@@ -1,6 +1,7 @@
 package Nexus
 
 import (
+	"errors"
 	"log"
 	"math"
 	"net/http"
@@ -64,15 +65,20 @@ func (e *Engine) WebSocketService() func(w http.ResponseWriter, r *http.Request)
 //	serveWs(e, c.Writer, c.Request)
 //}
 
-func (e *Engine) Run(addr string, path ...string) {
-	wsPath := "/"
-	if len(path) > 0 {
-		wsPath = path[0]
+func (e *Engine) Run(args ...string) error {
+	switch len(args) {
+	case 1:
+		e.Addr = args[0]
+	case 2:
+		e.Addr = args[0]
+		e.WebSocketPath = args[1]
 	}
-	http.HandleFunc(wsPath, e.WebSocketService())
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatal("ListenAndServe:", err)
+	http.HandleFunc(e.WebSocketPath, e.WebSocketService())
+	if err := http.ListenAndServe(e.Addr, nil); err != nil {
+		log.Print("ListenAndServe: %w", err)
+		return err
 	}
+	return errors.New("run Error")
 }
 
 func (e *Engine) run() {
